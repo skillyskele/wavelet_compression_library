@@ -57,7 +57,7 @@ void read_eeg_signal(const char *filename, int signal_length, int num_channels, 
     {
         for (int j = 0; j < signal_length; j++)
         {
-            if (fscanf(file, "%f", &data[i*signal_length + j]) != 1) // the format specifier should match SAMPLE_TYPE
+            if (fscanf(file, "%hd", &data[i*signal_length + j]) != 1) // the format specifier should match SAMPLE_TYPE
             {
                 printf("Error reading channel %d sample %d\n", i, j);
                 fclose(file);
@@ -103,7 +103,7 @@ CompressResult compress(wave_object wave, wt_object wave_transform, COEFFICIENT_
     // save the means used to demean the data later
     SAMPLE_TYPE means[num_channels];
     for (int i = 0; i < num_channels; i++) {
-        SAMPLE_TYPE sum = 0.0;
+        int32_t sum = 0;
         for (int j = 0; j < signal_length; j++) {
             sum += data[i*signal_length + j];
         }
@@ -270,7 +270,7 @@ int main()
    
     FILE *out = fopen("results/compression_results.csv", "w");
     fprintf(out, "Signal Length,Bits Per Pixel,Quantization Step Size,Sparse Representation Size,Wavelet Coefficients Size,Number of Non-Zero Coefficients\n");
-    for (int signal_length = 16; signal_length <= 32; signal_length += 32) {
+    for (int signal_length = 16; signal_length <= 80; signal_length += 32) {
         //printf("Processing signal length: %d\n", signal_length);
         num_levels = floor(log2(signal_length));
         SAMPLE_TYPE *data = malloc(num_channels * signal_length * sizeof(SAMPLE_TYPE));
@@ -311,7 +311,7 @@ int main()
             printf("Length[%d]: %d\n", i, result.lengths[i]);
         }
         for (int i = 0; i < num_channels; i++) {
-            printf("Mean[%d]: %f\n", i, result.means[i]);
+            printf("Mean[%d]: %hd\n", i, result.means[i]);
         }
 
 
@@ -342,7 +342,7 @@ int main()
         }
 
         for (int i = 0; i < num_channels; i++) {
-            fprintf(f_means, "%f\n", result.means[i]);
+            fprintf(f_means, "%hd\n", result.means[i]);
         }
 
         fclose(f_sparse);
