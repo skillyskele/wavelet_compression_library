@@ -2,6 +2,7 @@
 #define DWT_H
 
 #include "wavedec.h"
+#include "compression_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -9,10 +10,10 @@ extern "C" {
 
 /* Discrete Wavelet Transform (symmetric extension) stride-based API.
     Matches the signature from dwt.c */
-void dwt_sym_stride(double *inp, int N, double *lpd, double *hpd, int lpd_len,
-                          double *cA, int len_cA, double *cD, int istride, int ostride);
+void dwt_sym_stride(COEFFICIENT_TYPE *inp, int N, COEFFICIENT_TYPE *lpd,  COEFFICIENT_TYPE *hpd, int lpd_len,
+                           COEFFICIENT_TYPE *cA, int len_cA,  COEFFICIENT_TYPE *cD, int istride, int ostride);
 
-void dwt(wt_object wt, const double *input);
+void dwt(wt_object wt, const SAMPLE_TYPE *input);
 
 #ifdef __cplusplus
 }

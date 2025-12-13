@@ -13,7 +13,7 @@ LDFLAGS = -lm
 SRCS = main.c wavedec.c dwt.c
 
 # Header files
-HEADERS = wavedec.h dwt.h
+HEADERS = wavedec.h dwt.h compression_types.h
 
 # Output executable
 OUTPUT = wave_test
