@@ -57,7 +57,7 @@ void read_eeg_signal(const char *filename, int signal_length, int num_channels, 
     {
         for (int j = 0; j < signal_length; j++)
         {
-            if (fscanf(file, "%hd", &data[i*signal_length + j]) != 1) // the format specifier should match SAMPLE_TYPE
+            if (fscanf(file, "%f", &data[i*signal_length + j]) != 1) // the format specifier should match SAMPLE_TYPE
             {
                 printf("Error reading channel %d sample %d\n", i, j);
                 fclose(file);
@@ -103,7 +103,7 @@ CompressResult compress(wave_object wave, wt_object wave_transform, COEFFICIENT_
     // save the means used to demean the data later
     SAMPLE_TYPE means[num_channels];
     for (int i = 0; i < num_channels; i++) {
-        int32_t sum = 0;
+        SAMPLE_TYPE sum = 0;
         for (int j = 0; j < signal_length; j++) {
             sum += data[i*signal_length + j];
         }
@@ -270,7 +270,7 @@ int main()
    
     FILE *out = fopen("results/compression_results.csv", "w");
     fprintf(out, "Signal Length,Bits Per Pixel,Quantization Step Size,Sparse Representation Size,Wavelet Coefficients Size,Number of Non-Zero Coefficients\n");
-    for (int signal_length = 16; signal_length <= 80; signal_length += 32) {
+    for (int signal_length = 16; signal_length <= 20000; signal_length += 32) {
         //printf("Processing signal length: %d\n", signal_length);
         num_levels = floor(log2(signal_length));
         SAMPLE_TYPE *data = malloc(num_channels * signal_length * sizeof(SAMPLE_TYPE));
@@ -296,23 +296,23 @@ int main()
         CompressResult result = compress(wave, wave_transform, cr, data, signal_length, num_levels, num_channels); // RESULT MUST CONTAIN QUANT VALUE, REMEMBER, WE ACTUALLY AIM TO SEND THE QUANT VALUE!!!!
 
         // print all result fields for debugging
-        printf("Bits Per Pixel: %f\n", result.bpp);
-        printf("Quantization Step Size: %f\n", result.quant);
-        printf("Number of Non-Zero Coefficients: %d\n", result.num_nnz);
-        printf("Signal Length: %d\n", result.signal_length);
-        printf("Sparse Representation Size: %zu\n", result.rep_size);
-        for (int i = 0; i < 10 && i < result.rep_size; i++) { // print first 10 values
-            printf("Sparse Rep[%d]: %f\n", i, result.sparse_rep[i]);
-        }
-        for (int i = 0; i < 10 && i < result.rep_size; i++) { // print first 10 values
-            printf("Wavelet Coef[%d]: %f\n", i, result.wc[i]);
-        }
-        for (int i = 0; i < num_levels + 2; i++) {
-            printf("Length[%d]: %d\n", i, result.lengths[i]);
-        }
-        for (int i = 0; i < num_channels; i++) {
-            printf("Mean[%d]: %hd\n", i, result.means[i]);
-        }
+        // printf("Bits Per Pixel: %f\n", result.bpp);
+        // printf("Quantization Step Size: %f\n", result.quant);
+        // printf("Number of Non-Zero Coefficients: %d\n", result.num_nnz);
+        // printf("Signal Length: %d\n", result.signal_length);
+        // printf("Sparse Representation Size: %zu\n", result.rep_size);
+        // for (int i = 0; i < 10 && i < result.rep_size; i++) { // print first 10 values
+        //     printf("Sparse Rep[%d]: %f\n", i, result.sparse_rep[i]);
+        // }
+        // for (int i = 0; i < 10 && i < result.rep_size; i++) { // print first 10 values
+        //     printf("Wavelet Coef[%d]: %f\n", i, result.wc[i]);
+        // }
+        // for (int i = 0; i < num_levels + 2; i++) {
+        //     printf("Length[%d]: %d\n", i, result.lengths[i]);
+        // }
+        // for (int i = 0; i < num_channels; i++) {
+        //     printf("Mean[%d]: %f\n", i, result.means[i]);
+        // }
 
 
         // Save detailed arrays to separate files for each signal_length
@@ -342,7 +342,7 @@ int main()
         }
 
         for (int i = 0; i < num_channels; i++) {
-            fprintf(f_means, "%hd\n", result.means[i]);
+            fprintf(f_means, "%f\n", result.means[i]);
         }
 
         fclose(f_sparse);
