@@ -264,112 +264,131 @@ int main()
     // num channels is 1 for now
     int num_levels;
     int num_channels = 1;
-    COEFFICIENT_TYPE cr = 0.05;
+    COEFFICIENT_TYPE cr_values[] = {0.01, 0.1, 0.15, 0.2,  0.25}; //omitted 0.05
+    int num_cr_values = sizeof(cr_values) / sizeof(cr_values[0]);
+
+    // loop through various compression ratios
+    for (int cr_idx = 0; cr_idx < num_cr_values; cr_idx++) {
+        COEFFICIENT_TYPE cr = cr_values[cr_idx];
+
+        // create folder name
+        char folder_name[64];
+        sprintf(folder_name, "results/cr_%0.2f", cr);
+        char command[128];
+        sprintf(command, "mkdir -p %s/sparse_rep %s/wc %s/quant %s/lengths %s/means", folder_name, folder_name, folder_name, folder_name, folder_name);
+        system(command);
+
+        // open csv file for writing
+        char csv_fname[64];
+        sprintf(csv_fname, "%s/compression_results.csv", folder_name);
+
+        FILE *out = fopen(csv_fname, "w");
+        fprintf(out, "Signal Length,Bits Per Pixel,Quantization Step Size,Sparse Representation Size,Wavelet Coefficients Size,Number of Non-Zero Coefficients\n");
+        
+        for (int signal_length = 16; signal_length <= 20000; signal_length += 32) {
+            //printf("Processing signal length: %d\n", signal_length);
+            num_levels = floor(log2(signal_length));
+            SAMPLE_TYPE *data = malloc(num_channels * signal_length * sizeof(SAMPLE_TYPE));
+            read_eeg_signal("eeg.txt", signal_length, num_channels, data);
+            wave_object wave = wave_init("db4");
+            // check if wave is NULL
+            if (wave == NULL)
+            {
+                printf("Error initializing wave object.\n");
+                exit(1);
+            }
 
 
-   
-    FILE *out = fopen("results/compression_results.csv", "w");
-    fprintf(out, "Signal Length,Bits Per Pixel,Quantization Step Size,Sparse Representation Size,Wavelet Coefficients Size,Number of Non-Zero Coefficients\n");
-    for (int signal_length = 16; signal_length <= 20000; signal_length += 32) {
-        //printf("Processing signal length: %d\n", signal_length);
-        num_levels = floor(log2(signal_length));
-        SAMPLE_TYPE *data = malloc(num_channels * signal_length * sizeof(SAMPLE_TYPE));
-        read_eeg_signal("eeg.txt", signal_length, num_channels, data);
-        wave_object wave = wave_init("db4");
-        // check if wave is NULL
-        if (wave == NULL)
-        {
-            printf("Error initializing wave object.\n");
-            exit(1);
+            wt_object wave_transform = wt_init(wave, "dwt", signal_length, num_levels);
+            // check if wave_transform is NULL
+            if (wave_transform == NULL)
+            {
+                printf("Error initializing wave transform object.\n");
+                exit(1);
+            }
+
+
+            CompressResult result = compress(wave, wave_transform, cr, data, signal_length, num_levels, num_channels); // RESULT MUST CONTAIN QUANT VALUE, REMEMBER, WE ACTUALLY AIM TO SEND THE QUANT VALUE!!!!
+
+            // print all result fields for debugging
+            // printf("Bits Per Pixel: %f\n", result.bpp);
+            // printf("Quantization Step Size: %f\n", result.quant);
+            // printf("Number of Non-Zero Coefficients: %d\n", result.num_nnz);
+            // printf("Signal Length: %d\n", result.signal_length);
+            // printf("Sparse Representation Size: %zu\n", result.rep_size);
+            // for (int i = 0; i < 10 && i < result.rep_size; i++) { // print first 10 values
+            //     printf("Sparse Rep[%d]: %f\n", i, result.sparse_rep[i]);
+            // }
+            // for (int i = 0; i < 10 && i < result.rep_size; i++) { // print first 10 values
+            //     printf("Wavelet Coef[%d]: %f\n", i, result.wc[i]);
+            // }
+            // for (int i = 0; i < num_levels + 2; i++) {
+            //     printf("Length[%d]: %d\n", i, result.lengths[i]);
+            // }
+            // for (int i = 0; i < num_channels; i++) {
+            //     printf("Mean[%d]: %f\n", i, result.means[i]);
+            // }
+
+
+            // Save detailed arrays to separate files for each signal_length
+            char sparse_fname[64], wc_fname[64], quant_fname[64], lengths_fname[64], means_fname[64];
+            sprintf(sparse_fname, "%s/sparse_rep/sparse_rep_%d.txt", folder_name, signal_length);
+            sprintf(wc_fname, "%s/wc/wc_%d.txt", folder_name, signal_length);
+            sprintf(quant_fname, "%s/quant/quant_%d.txt", folder_name, signal_length);
+            sprintf(lengths_fname, "%s/lengths/lengths_%d.txt", folder_name, signal_length);
+            sprintf(means_fname, "%s/means/means_%d.txt", folder_name, signal_length);
+            
+
+            FILE *f_sparse = fopen(sparse_fname, "w");
+            FILE *f_wc = fopen(wc_fname, "w");
+            FILE *f_quant = fopen(quant_fname, "w");
+            FILE *f_lengths = fopen(lengths_fname, "w");
+            FILE *f_means = fopen(means_fname, "w");
+            for (size_t i = 0; i < result.rep_size; i++)
+            {
+                fprintf(f_sparse, "%f\n", result.sparse_rep[i]);
+                fprintf(f_wc, "%f\n", result.wc[i]);
+            }
+
+            fprintf(f_quant, "%f\n", result.quant);
+
+            for (int i = 0; i < num_levels + 2; i++) {
+                fprintf(f_lengths, "%d\n", result.lengths[i]);
+            }
+
+            for (int i = 0; i < num_channels; i++) {
+                fprintf(f_means, "%f\n", result.means[i]);
+            }
+
+            fclose(f_sparse);
+            fclose(f_wc);
+            fclose(f_quant);
+            fclose(f_lengths);
+            fclose(f_means);
+
+
+            // now put other results in a csv
+        
+            fprintf(out, "%d,%f,%f,\"1x%zu float\",\"1x%zu float\",%d\n",
+            result.signal_length, result.bpp, result.quant,
+            result.rep_size, result.rep_size, result.num_nnz);
+
+
+            free(data);
+            free(result.sparse_rep);
+            free(result.wc);
+            free(result.lengths);
+            free(result.means);
+            wave_free(wave);
+            wt_free(wave_transform);
         }
-
-
-        wt_object wave_transform = wt_init(wave, "dwt", signal_length, num_levels);
-        // check if wave_transform is NULL
-        if (wave_transform == NULL)
-        {
-            printf("Error initializing wave transform object.\n");
-            exit(1);
-        }
-
-
-        CompressResult result = compress(wave, wave_transform, cr, data, signal_length, num_levels, num_channels); // RESULT MUST CONTAIN QUANT VALUE, REMEMBER, WE ACTUALLY AIM TO SEND THE QUANT VALUE!!!!
-
-        // print all result fields for debugging
-        // printf("Bits Per Pixel: %f\n", result.bpp);
-        // printf("Quantization Step Size: %f\n", result.quant);
-        // printf("Number of Non-Zero Coefficients: %d\n", result.num_nnz);
-        // printf("Signal Length: %d\n", result.signal_length);
-        // printf("Sparse Representation Size: %zu\n", result.rep_size);
-        // for (int i = 0; i < 10 && i < result.rep_size; i++) { // print first 10 values
-        //     printf("Sparse Rep[%d]: %f\n", i, result.sparse_rep[i]);
-        // }
-        // for (int i = 0; i < 10 && i < result.rep_size; i++) { // print first 10 values
-        //     printf("Wavelet Coef[%d]: %f\n", i, result.wc[i]);
-        // }
-        // for (int i = 0; i < num_levels + 2; i++) {
-        //     printf("Length[%d]: %d\n", i, result.lengths[i]);
-        // }
-        // for (int i = 0; i < num_channels; i++) {
-        //     printf("Mean[%d]: %f\n", i, result.means[i]);
-        // }
-
-
-        // Save detailed arrays to separate files for each signal_length
-        char sparse_fname[64], wc_fname[64], quant_fname[64], lengths_fname[64], means_fname[64];
-        sprintf(sparse_fname, "results/sparse_rep/sparse_rep_%d.txt", signal_length);
-        sprintf(wc_fname, "results/wc/wc_%d.txt", signal_length);
-        sprintf(quant_fname, "results/quant/quant_%d.txt", signal_length);
-        sprintf(lengths_fname, "results/lengths/lengths_%d.txt", signal_length);
-        sprintf(means_fname, "results/means/means_%d.txt", signal_length);
-
-
-        FILE *f_sparse = fopen(sparse_fname, "w");
-        FILE *f_wc = fopen(wc_fname, "w");
-        FILE *f_quant = fopen(quant_fname, "w");
-        FILE *f_lengths = fopen(lengths_fname, "w");
-        FILE *f_means = fopen(means_fname, "w");
-        for (size_t i = 0; i < result.rep_size; i++)
-        {
-            fprintf(f_sparse, "%f\n", result.sparse_rep[i]);
-            fprintf(f_wc, "%f\n", result.wc[i]);
-        }
-
-        fprintf(f_quant, "%f\n", result.quant);
-
-        for (int i = 0; i < num_levels + 2; i++) {
-            fprintf(f_lengths, "%d\n", result.lengths[i]);
-        }
-
-        for (int i = 0; i < num_channels; i++) {
-            fprintf(f_means, "%f\n", result.means[i]);
-        }
-
-        fclose(f_sparse);
-        fclose(f_wc);
-        fclose(f_quant);
-        fclose(f_lengths);
-        fclose(f_means);
-
-
-        // now put other results in a csv
-       
-        fprintf(out, "%d,%f,%f,\"1x%zu float\",\"1x%zu float\",%d\n",
-        result.signal_length, result.bpp, result.quant,
-        result.rep_size, result.rep_size, result.num_nnz);
-
-
-        free(data);
-        free(result.sparse_rep);
-        free(result.wc);
-        free(result.lengths);
-        free(result.means);
-        wave_free(wave);
-        wt_free(wave_transform);
+    
+    
+        fclose(out);
     }
-   
-   
-    fclose(out);
+
+
+
     return 0;
    
    
