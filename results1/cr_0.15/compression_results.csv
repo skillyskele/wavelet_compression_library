@@ -1,0 +1,8 @@
+Signal Length,Bits Per Pixel,Quantization Step Size,Sparse Representation Size,Wavelet Coefficients Size,Number of Non-Zero Coefficients
+16,0.142857,2325.404785,"1x42 float","1x42 float",3
+48,0.135802,2156.036133,"1x81 float","1x81 float",11
+80,0.100000,2195.062988,"1x120 float","1x120 float",12
+112,0.145695,936.083374,"1x151 float","1x151 float",11
+144,0.157068,2409.001221,"1x191 float","1x191 float",15
+176,0.162162,2137.436523,"1x222 float","1x222 float",12
+208,0.141732,1775.908936,"1x254 float","1x254 float",12

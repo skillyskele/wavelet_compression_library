@@ -273,7 +273,7 @@ int main()
 
         // create folder name
         char folder_name[64];
-        sprintf(folder_name, "results/cr_%0.2f", cr);
+        sprintf(folder_name, "results1/cr_%0.2f", cr);
         char command[128];
         sprintf(command, "mkdir -p %s/sparse_rep %s/wc %s/quant %s/lengths %s/means", folder_name, folder_name, folder_name, folder_name, folder_name);
         system(command);
@@ -285,7 +285,7 @@ int main()
         FILE *out = fopen(csv_fname, "w");
         fprintf(out, "Signal Length,Bits Per Pixel,Quantization Step Size,Sparse Representation Size,Wavelet Coefficients Size,Number of Non-Zero Coefficients\n");
         
-        for (int signal_length = 16; signal_length <= 20000; signal_length += 32) {
+        for (int signal_length = 16; signal_length <= 208; signal_length += 32) {
             //printf("Processing signal length: %d\n", signal_length);
             num_levels = floor(log2(signal_length));
             SAMPLE_TYPE *data = malloc(num_channels * signal_length * sizeof(SAMPLE_TYPE));
